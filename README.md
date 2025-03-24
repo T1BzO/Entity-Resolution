@@ -12,15 +12,16 @@ Am utilizat **Python** și tehnici de preprocesare a datelor, inclusiv tehnici d
 
 Asigură-te că ai instalate următoarele librării:
 
-```bash
+
 pip install pandas networkx scikit-learn tqdm
-2. Cum să rulezi scriptul
+
+### 2. Cum să rulezi scriptul
 După ce ai configurat mediul tău Python cu dependințele necesare, rulează scriptul principal:
 
 bash
 Copiază
 python entity_resolution.py
-3. Descrierea scriptului
+### 3. Descrierea scriptului
 entity_resolution.py: Scriptul principal care realizează următoarele:
 
 Citește datele din fișierul .parquet
@@ -33,7 +34,7 @@ Gruparea companiilor duplicate folosind algoritmi de clustering (NetworkX)
 
 Salvarea rezultatelor într-un fișier .csv
 
-4. Intrare / Ieșire
+### 4. Intrare / Ieșire
 Intrare:
 Fișierul de date de intrare este un fișier .parquet care conține informații despre companii.
 
@@ -78,4 +79,9 @@ Vom antrena un model bazat pe embeddings din texte (de exemplu, folosind Sentenc
 
 Optimizare:
 
+<<<<<<< HEAD
 Vom implementa soluții de paralelizare și salvare progresivă pentru a îmbunătăți performanța pe seturi mari de date.
+=======
+Vom implementa soluții de paralelizare și salvare progresivă pentru a îmbunătăți performanța pe seturi mari de date.
+
+>>>>>>> a5b021ab2ac8d0a36e39fd6e4d16cb0d8ddde193
