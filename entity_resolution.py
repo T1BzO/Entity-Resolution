@@ -5,7 +5,6 @@ import itertools
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
-
 # 1. Citesc fișierul Parquet
 df = pd.read_parquet("veridion_entity_resolution_challenge.snappy.parquet")
 
@@ -46,12 +45,17 @@ df_selected.to_csv("normalized_company_data.csv", index=False)
 # ==============================
 
 def text_similarity(a, b):
-    a = str(a) if pd.notnull(a) else ""
-    b = str(b) if pd.notnull(b) else ""
-    if not a or not b:
+    a = str(a).strip() if pd.notnull(a) else ""
+    b = str(b).strip() if pd.notnull(b) else ""
+
+    if not a or not b or len(a.split()) < 1 or len(b.split()) < 1:
         return 0.0
-    vec = TfidfVectorizer().fit_transform([a, b])
-    return cosine_similarity(vec[0:1], vec[1:2])[0][0]
+
+    try:
+        vec = TfidfVectorizer().fit_transform([a, b])
+        return cosine_similarity(vec[0:1], vec[1:2])[0][0]
+    except ValueError:
+        return 0.0
 
 def calculate_similarity(row1, row2, weights=None):
     if weights is None:
@@ -68,14 +72,19 @@ def calculate_similarity(row1, row2, weights=None):
         score += weight * text_similarity(row1[field], row2[field])
     
     return round(score, 3)
+df_selected = df_selected[df_selected["main_country"] == "germany"]
 
-def compute_similarity_pairs(df, threshold=0.85, group_by="main_country", max_rows=500):
-    sample_df = df.head(max_rows).copy()
-    blocks = sample_df.groupby(group_by)
-    
+def compute_similarity_pairs_blocked(df, threshold=0.85, blocking_keys=["main_country", "main_city"], max_block_size=300):
     similar_pairs = []
 
-    for _, group in blocks:
+    grouped = df.groupby(blocking_keys)
+    print(f"Total blocks: {len(grouped)}")
+
+    for idx, (_, group) in enumerate(grouped):
+        if len(group) < 2 or len(group) > max_block_size:
+            continue
+        print(f"[{idx + 1}/{len(grouped)}] Processing block with {len(group)} companies")
+
         for i, j in itertools.combinations(group.itertuples(index=False), 2):
             sim_score = calculate_similarity(i._asdict(), j._asdict())
             if sim_score >= threshold:
@@ -87,40 +96,33 @@ def compute_similarity_pairs(df, threshold=0.85, group_by="main_country", max_ro
 
     return pd.DataFrame(similar_pairs)
 
-# 6. Rulez pe un subset de 500 companii și salvez perechile similare
-similar_pairs_df = compute_similarity_pairs(df_selected, threshold=0.85, max_rows=500)
+# 6. Rulez și salvez perechile similare
+similar_pairs_df = compute_similarity_pairs_blocked(df_selected, threshold=0.85)
 similar_pairs_df.to_csv("similarity_pairs.csv", index=False)
-# ==============================
-# 7.  Gruparea companiilor duplicate
-# ==============================
-def assign_group_ids(similarity_df, df_entities):
-    """
-    similarity_df: DataFrame cu coloanele record_id_1, record_id_2, similarity_score
-    df_entities: DataFrame cu toate companiile normalizate (inclusiv record_id)
-    """
 
-    # 1. Construim graful
+# ==============================
+# 7. Gruparea companiilor duplicate
+# ==============================
+
+def assign_group_ids(similarity_df, df_entities):
     G = nx.Graph()
     G.add_edges_from(similarity_df[["record_id_1", "record_id_2"]].values)
 
-    # 2. Extragem componentele conexe (fiecare e un grup de companii duplicate)
     connected_components = list(nx.connected_components(G))
 
-    # 3. Creăm un dicționar {record_id: group_id}
     record_to_group = {}
     for group_id, component in enumerate(connected_components):
         for record_id in component:
             record_to_group[record_id] = group_id
 
-    # 4. Adăugăm coloana `company_group_id` în DataFrame-ul cu companii
     df_entities["company_group_id"] = df_entities["record_id"].map(record_to_group)
 
-    # 5. Companiile necuplate (fără perechi similare) le punem în grupuri unice
     next_id = len(connected_components)
     df_entities["company_group_id"] = df_entities["company_group_id"].fillna(
         df_entities["record_id"] + next_id
     ).astype(int)
 
     return df_entities
+
 df_selected = assign_group_ids(similar_pairs_df, df_selected)
 df_selected.to_csv("final_companies_with_groups.csv", index=False)
