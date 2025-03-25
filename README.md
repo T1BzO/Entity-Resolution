@@ -86,9 +86,9 @@ Vom antrena un model bazat pe embeddings din texte (de exemplu, folosind Sentenc
 
 Optimizare:
 
-<<<<<<< HEAD
+##
 Vom implementa soluții de paralelizare și salvare progresivă pentru a îmbunătăți performanța pe seturi mari de date.
-=======
-Vom implementa soluții de paralelizare și salvare progresivă pentru a îmbunătăți performanța pe seturi mari de date.
+
+
 
 
